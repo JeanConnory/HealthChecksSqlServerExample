@@ -1,4 +1,6 @@
+using HealthChecks.UI.Client;
 using HealthCheckSample.Data;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -8,6 +10,12 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<CustomerDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("CustomerConnection"))
 );
+
+builder.Services.AddHealthChecks()
+      .AddSqlServer(builder.Configuration.GetConnectionString("CustomerConnection"), name: "SQL Server Check", tags: new string[] { "db", "data" });
+
+builder.Services.AddHealthChecksUI()
+    .AddInMemoryStorage();
 
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -22,6 +30,17 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseHealthChecks("/health", new HealthCheckOptions()
+{
+    Predicate = _ => true,
+    ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+});
+
+app.UseHealthChecksUI(options =>
+{
+    options.UIPath = "/dashboard";
+});
 
 app.UseHttpsRedirection();
 
